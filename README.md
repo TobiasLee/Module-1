@@ -13,7 +13,7 @@ This assignment requires the following files from the previous assignments.
 ## Training Results
 
 
-![Classifier]()
+![Classifier](results.png)
 
 
 ![Log](log.png "Loss graph and log  ")
