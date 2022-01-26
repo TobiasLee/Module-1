@@ -1,5 +1,7 @@
 variable_count = 1
-
+from collections import defaultdict
+from signal import default_int_handler
+from threading import currentThread 
 
 # ## Module 1
 
@@ -190,9 +192,8 @@ class History:
         Returns:
             list of numbers : a derivative with respect to `inputs`
         """
-        # TODO: Implement for Task 1.4.
-        raise NotImplementedError('Need to implement for Task 1.4')
-
+        variables_with_derivatives = self.last_fn.chain_rule(self.ctx, self.inputs, d_output)
+        return  [ t[1] for t in variables_with_derivatives]
 
 class FunctionBase:
     """
@@ -271,11 +272,16 @@ class FunctionBase:
             (see `is_constant` to remove unneeded variables)
 
         """
-        # Tip: Note when implementing this function that
-        # cls.backward may return either a value or a tuple.
-        # TODO: Implement for Task 1.3.
-        raise NotImplementedError('Need to implement for Task 1.3')
-
+        output = []
+        derivatives = cls.backward(ctx, d_output)
+        for var_i, var in enumerate(inputs):
+            if is_constant(var):
+                continue
+            if type(derivatives) == float: # simple derivatives 
+                output.append((var, derivatives))
+            else:
+                output.append((var, derivatives[var_i]))
+        return output
 
 # Algorithms for backpropagation
 
@@ -295,8 +301,24 @@ def topological_sort(variable):
         list of Variables : Non-constant Variables in topological order
                             starting from the right.
     """
-    # TODO: Implement for Task 1.4.
-    raise NotImplementedError('Need to implement for Task 1.4')
+    sorted_variables = [] 
+    # dfs for topological sorting 
+    vis_id = set()
+    def dfs(var):
+        if var.unique_id in vis_id: # already visited
+            return 
+        
+        if not var.is_leaf():
+            for prev_variable in var.history.inputs:
+                if not is_constant(prev_variable):
+                    dfs(prev_variable)
+            
+        vis_id.add(var.unique_id) # mask as visited 
+        sorted_variables.insert(0, var)
+        
+    dfs(variable)
+    return sorted_variables  
+    
 
 
 def backpropagate(variable, deriv):
@@ -312,5 +334,27 @@ def backpropagate(variable, deriv):
 
     No return. Should write to its results to the derivative values of each leaf through `accumulate_derivative`.
     """
-    # TODO: Implement for Task 1.4.
-    raise NotImplementedError('Need to implement for Task 1.4')
+    ordered_variable = topological_sort(variable)
+    # print(ordered_variable)
+    # initialize a deriv_dict 
+    current_deriv_dict = defaultdict(lambda: 0)
+    current_deriv_dict[variable.unique_id] += deriv
+    for var in ordered_variable:
+        if is_constant(var):
+            continue 
+        # d_out = current_deriv_dict[var.unique_id] if var.unique_id != variable.unique_id else deriv
+        if var.is_leaf(): # leaf node 
+            var.accumulate_derivative(current_deriv_dict[var.unique_id]) # 
+        else:
+            derivatives = var.history.backprop_step(current_deriv_dict[var.unique_id]) # only fo non-constants
+            inputs = var.history.inputs
+            dindex = 0 
+            for inp in inputs:
+                if not is_constant(inp):
+                    current_deriv_dict[inp.unique_id] += derivatives[dindex]
+                    dindex += 1 
+
+            
+            
+            
+        
